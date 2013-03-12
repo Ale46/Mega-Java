@@ -181,6 +181,19 @@ public class MegaHandler {
 		}
 		return api_request(json.toString());
 	}
+	
+	public long get_quota() {
+		JSONObject json = new JSONObject();
+		try {
+			json.put("a", "uq");
+			json.put("xfer", 1);
+			
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		
+		return new JSONObject(api_request(json.toString())).getLong("mstrg");
+	}
 
 	public String get_user() {
 		JSONObject json = new JSONObject();
