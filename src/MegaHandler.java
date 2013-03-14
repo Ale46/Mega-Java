@@ -244,9 +244,13 @@ public class MegaHandler {
 		try {
 
 			if (jsonFile.getInt("t") < 2) {
+				
 				String key = "";
 				String uid = jsonFile.getString("u");
+				String h =(jsonFile.getString("h"));
 				file.setUID(uid);
+				file.setHandle(h);
+				//print (h);
 				if (jsonFile.getString("k").contains("/")){
 					String[] keys = jsonFile.getString("k").split("/");
 					int start = keys[0].indexOf(":")+1;
@@ -275,6 +279,8 @@ public class MegaHandler {
 						file.setDirectory(true);
 
 					}
+					
+					file.setKey(k);
 					file.setAttributes(MegaCrypt.decrypt_attr(attributes, k));
 				}else if(!jsonFile.isNull("su") && !jsonFile.isNull("sk") && jsonFile.getString("k").contains(":")){
 					long[] keyS;
@@ -295,6 +301,8 @@ public class MegaHandler {
 						k = keyS;
 						file.setDirectory(true);
 					}
+					
+					file.setKey(k);
 					file.setAttributes(MegaCrypt.decrypt_attr(attributes, k));
 
 				}else if (!jsonFile.isNull("u") && jsonFile.getString("k").contains(":") && user_keys.containsKey(jsonFile.getString("u"))) {
@@ -313,6 +321,8 @@ public class MegaHandler {
 						k = keyS;
 						file.setDirectory(true);
 					}
+					
+					file.setKey(k);
 					file.setAttributes(MegaCrypt.decrypt_attr(attributes, k));
 					
 				}else if (!jsonFile.isNull("k")){
@@ -326,13 +336,16 @@ public class MegaHandler {
 						k[2] = keys_a32S[2] ^ keys_a32S[6];
 						k[3] = keys_a32S[3] ^ keys_a32S[7];
 						file.setDirectory(true);
-
+						
+						
 					}/*else{
 						k = keys_a32S;
 
 						file.setDirectory(true);
 
 					}*/
+					file.setKey(k);
+					
 					file.setAttributes(MegaCrypt.decrypt_attr(attributes, k));
 				}else{
 					file.setAttributes(jsonFile.toString());
@@ -352,10 +365,29 @@ public class MegaHandler {
 			e.printStackTrace();
 		}
 
-		file.setAttributes(jsonFile.toString());
+		//file.setAttributes(jsonFile.toString());
 		return file;
 	}
 
+	public String get_url(MegaFile f){
+		
+		if ( f.getHandle() == null ||  f.getKey() == null)
+			return "Error";
+		JSONObject json = new JSONObject();
+		try {
+			json.put("a", "l");
+			json.put("n", f.getHandle());
+
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+
+		String public_handle = api_request(json.toString());
+		if (public_handle.equals("-11"))
+			return "Shared file, no public url";
+		return "https://mega.co.nz/#!"+public_handle.substring(1, public_handle.length()-1)+"!"+MegaCrypt.a32_to_base64(f.getKey());
+		
+	}
 
 	private String api_request(String data) {
 		HttpURLConnection connection = null;

@@ -4,7 +4,9 @@ Java library for the [mega.co.nz] (https://mega.co.nz) API, currently supporting
  - login
  - downloading
  - list directory & files (also if shared from others)
+ - get download link
  - add contacts
+ - get space left
  
 This work is based on the source code released by [@NT2005] (https://github.com/NT2005).
 
@@ -14,7 +16,7 @@ This work is based on the source code released by [@NT2005] (https://github.com/
 ## How to use
 Import MegaJava and json library on your project
 
-###Login
+###Login (you need this step before do anything)
 ```java
 MegaHandler mh = new MegaHandler("user@mail.com", "password");
 mh.login();
@@ -36,6 +38,10 @@ try {
 } catch (InvalidAlgorithmParameterException e) {
   e.printStackTrace();
 }
+```
+###Get download url (works only against own files)
+```java
+mh.get_url(MegaFile);
 ```
 ###Add a contact
 ```java

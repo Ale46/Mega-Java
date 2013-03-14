@@ -10,14 +10,31 @@
  ******************************************************************************/
 public class MegaFile {
 
-    private String uid, name;
+    private String uid, name, h;
+	private long[] key;
     private boolean isDir = false;
 
     public String getName() {
     	if (name == null)  return "NO NAME"; else  return name;
     	//return name;
     }
-
+    
+    public void setKey(long[] k){
+    	key  = k;
+    }
+    
+    public long[] getKey(){
+    	return key;
+    }
+    
+    public void setHandle(String h){
+    	this.h  = h;
+    }
+    
+    public String getHandle(){
+    	return h;
+    }
+    
     public void setName(String name) {
     	
         this.name = name;
