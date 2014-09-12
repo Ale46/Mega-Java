@@ -1,4 +1,5 @@
 # MegaJava
+[![gittip](https://img.shields.io/gittip/Ale46.svg)](https://www.gratipay.com/Ale46/)
 
 Java library for the [mega.co.nz] (https://mega.co.nz) API, currently supporting:
  - login
