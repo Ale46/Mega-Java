@@ -501,14 +501,7 @@ public class MegaHandler {
 		int file_size = file_data.getInt("s");
 		String attribs = (file_data.getString("at"));
 		attribs = new String(MegaCrypt.aes_cbc_decrypt(MegaCrypt.base64_url_decode_byte(attribs), key));
-
-		if (attribs.contains("\\\"")){
-			attribs = attribs.replace("\\\"", "\"");
-		}
-
-		int end = attribs.lastIndexOf("\"");
-		int start = attribs.lastIndexOf(":\"", end-1)+2;
-		String file_name = attribs.substring(start,end);
+		String file_name = new JSONObject(attribs.substring(4, attribs.length())).getString("n");
 		print(file_name);
 		final IvParameterSpec ivSpec = new IvParameterSpec(iv);
 		final SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
@@ -520,7 +513,7 @@ public class MegaHandler {
 		FileOutputStream fos = new FileOutputStream(path+File.separator+file_name);
 		final OutputStream cos = new CipherOutputStream(fos, cipher);
 		final Cipher decipher = Cipher.getInstance("AES/CTR/NoPadding");
-	    decipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
+	    	decipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
 		int read = 0;
 		final byte[] buffer = new byte[32767];
 		try {
