@@ -145,6 +145,7 @@ public class MegaHandler {
 				Cipher cipher = Cipher.getInstance("RSA/ECB/NoPadding");
 				cipher.init(Cipher.DECRYPT_MODE, privateKey);
 				// PyCrypt can handle >256 bit length... what the fuck... sometimes i get 257
+				assert encrypted_sid != null;
 				if (encrypted_sid.toByteArray().length > 256) {
 					Random rg = new Random();
 					sequence_number = rg.nextInt(Integer.MAX_VALUE);
@@ -191,8 +192,13 @@ public class MegaHandler {
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
-		
-		return new JSONObject(api_request(json.toString())).getLong("mstrg");
+
+		try {
+			return new JSONObject(api_request(json.toString())).getLong("mstrg");
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		return 0;
 	}
 
 	public String get_user() {
@@ -489,29 +495,53 @@ public class MegaHandler {
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
-		
-		JSONObject file_data = new JSONObject(api_request(json.toString()));
+
+		JSONObject file_data = null;
+		try {
+			file_data = new JSONObject(api_request(json.toString()));
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
 		int[] keyNOnce = new int[] { intKey[0] ^ intKey[4], intKey[1] ^ intKey[5], intKey[2] ^ intKey[6], intKey[3] ^ intKey[7], intKey[4], intKey[5] };
 		byte[] key = MegaCrypt.aInt_to_aByte(keyNOnce[0], keyNOnce[1], keyNOnce[2], keyNOnce[3]);
 
 		int[] iiv = new int[] { keyNOnce[4], keyNOnce[5], 0, 0 };
 		byte[] iv = MegaCrypt.aInt_to_aByte(iiv);
 
-		@SuppressWarnings("unused")
-		int file_size = file_data.getInt("s");
-		String attribs = (file_data.getString("at"));
+		try {
+			assert file_data != null;
+			@SuppressWarnings("unused")
+			int file_size = file_data.getInt("s");
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		String attribs = null;
+		try {
+			attribs = (file_data.getString("at"));
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
 		attribs = new String(MegaCrypt.aes_cbc_decrypt(MegaCrypt.base64_url_decode_byte(attribs), key));
 
 		String file_name = attribs.substring(10,attribs.lastIndexOf("\""));
-		print(file_name);
 		final IvParameterSpec ivSpec = new IvParameterSpec(iv);
 		final SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
 		Cipher cipher = Cipher.getInstance("AES/CTR/nopadding");
 		cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
 		InputStream is = null;
-		String file_url = file_data.getString("g");
+		String file_url = null;
+		try {
+			file_url = file_data.getString("g");
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		String[] namer = file_name.split(String.valueOf('"'), 4);
+		File f = new File(path + File.separator + namer[0]);
+		if (!f.exists()) {
+			f.createNewFile();
+		}
 
-		FileOutputStream fos = new FileOutputStream(path+File.separator+file_name);
+		FileOutputStream fos = new FileOutputStream(path + File.separator + namer[0]);
 		final OutputStream cos = new CipherOutputStream(fos, cipher);
 		final Cipher decipher = Cipher.getInstance("AES/CTR/NoPadding");
 	    decipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
@@ -519,6 +549,7 @@ public class MegaHandler {
 		final byte[] buffer = new byte[32767];
 		try {
 
+			assert file_url != null;
 			URLConnection urlConn = new URL(file_url).openConnection();
 
 			print(file_url);
@@ -547,3 +578,4 @@ public class MegaHandler {
 		System.out.println(o);
 	}
 }
+
