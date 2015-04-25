@@ -502,7 +502,13 @@ public class MegaHandler {
 		String attribs = (file_data.getString("at"));
 		attribs = new String(MegaCrypt.aes_cbc_decrypt(MegaCrypt.base64_url_decode_byte(attribs), key));
 
-		String file_name = attribs.substring(10,attribs.lastIndexOf("\""));
+		if (attribs.contains("\\\"")){
+			attribs = attribs.replace("\\\"", "\"");
+		}
+
+		int end = attribs.lastIndexOf("\"");
+		int start = attribs.lastIndexOf(":\"", end-1)+2;
+		String file_name = attribs.substring(start,end);
 		print(file_name);
 		final IvParameterSpec ivSpec = new IvParameterSpec(iv);
 		final SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
