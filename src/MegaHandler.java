@@ -510,7 +510,9 @@ public class MegaHandler {
 		InputStream is = null;
 		String file_url = file_data.getString("g");
 
-		FileOutputStream fos = new FileOutputStream(path+File.separator+file_name);
+		//agregado por cicha anteriormente no funcionaba con patch=""
+        String destinoFile=path.isEmpty()?file_name:path + File.separator + file_name;
+        FileOutputStream fos = new FileOutputStream(destinoFile);
 		final OutputStream cos = new CipherOutputStream(fos, cipher);
 		final Cipher decipher = Cipher.getInstance("AES/CTR/NoPadding");
 	    	decipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
