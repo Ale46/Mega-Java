@@ -4,10 +4,11 @@
  * are made available under the terms of the GNU Public License v3.0
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/gpl.html
- * 
+ *
  * Contributors:
  *     @NT2005 - initial API and implementation
  ******************************************************************************/
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -41,11 +42,7 @@ import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.spec.RSAPrivateKeySpec;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Random;
-
-
+import java.util.*;
 
 
 public class MegaHandler {
@@ -56,6 +53,7 @@ public class MegaHandler {
 	private BigInteger[] rsa_private_key;
 	private long[] password_aes;
 	HashMap<String,long[]> user_keys = new HashMap<String,long[]>();
+	private Timer timer;
 
 	public MegaHandler(String email, String password) {
 		this.email = email;
@@ -181,17 +179,17 @@ public class MegaHandler {
 		}
 		return api_request(json.toString());
 	}
-	
-	public long get_quota() {
+
+	public long get_quota() throws JSONException {
 		JSONObject json = new JSONObject();
 		try {
 			json.put("a", "uq");
 			json.put("xfer", 1);
-			
+
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
-		
+
 		return new JSONObject(api_request(json.toString())).getLong("mstrg");
 	}
 
@@ -244,7 +242,7 @@ public class MegaHandler {
 		try {
 
 			if (jsonFile.getInt("t") < 2) {
-				
+
 				String key = "";
 				String uid = jsonFile.getString("u");
 				String h =(jsonFile.getString("h"));
@@ -259,7 +257,7 @@ public class MegaHandler {
 				}
 
 				String attributes = MegaCrypt.base64_url_decode(jsonFile.getString("a"));
-				
+
 				long[] k = new long[4];
 				if (!key.isEmpty()){
 					long[] keys_a32 = MegaCrypt.decrypt_key(MegaCrypt.base64_to_a32(key), master_key);
@@ -279,7 +277,7 @@ public class MegaHandler {
 						file.setDirectory(true);
 
 					}
-					
+
 					file.setKey(k);
 					file.setAttributes(MegaCrypt.decrypt_attr(attributes, k));
 				}else if(!jsonFile.isNull("su") && !jsonFile.isNull("sk") && jsonFile.getString("k").contains(":")){
@@ -301,7 +299,7 @@ public class MegaHandler {
 						k = keyS;
 						file.setDirectory(true);
 					}
-					
+
 					file.setKey(k);
 					file.setAttributes(MegaCrypt.decrypt_attr(attributes, k));
 
@@ -321,10 +319,10 @@ public class MegaHandler {
 						k = keyS;
 						file.setDirectory(true);
 					}
-					
+
 					file.setKey(k);
 					file.setAttributes(MegaCrypt.decrypt_attr(attributes, k));
-					
+
 				}else if (!jsonFile.isNull("k")){
 					int dd1 = jsonFile.getString("k").indexOf(':');
 					key = jsonFile.getString("k").substring(dd1 + 1);
@@ -336,16 +334,14 @@ public class MegaHandler {
 						k[2] = keys_a32S[2] ^ keys_a32S[6];
 						k[3] = keys_a32S[3] ^ keys_a32S[7];
 						file.setDirectory(true);
-						
-						
+
+
 					}/*else{
 						k = keys_a32S;
-
 						file.setDirectory(true);
-
 					}*/
 					file.setKey(k);
-					
+
 					file.setAttributes(MegaCrypt.decrypt_attr(attributes, k));
 				}else{
 					file.setAttributes(jsonFile.toString());
@@ -370,7 +366,7 @@ public class MegaHandler {
 	}
 
 	public String get_url(MegaFile f){
-		
+
 		if ( f.getHandle() == null ||  f.getKey() == null)
 			return "Error";
 		JSONObject json = new JSONObject();
@@ -386,7 +382,7 @@ public class MegaHandler {
 		if (public_handle.equals("-11"))
 			return "Shared file, no public url";
 		return "https://mega.co.nz/#!"+public_handle.substring(1, public_handle.length()-1)+"!"+MegaCrypt.a32_to_base64(f.getKey());
-		
+
 	}
 
 	private String api_request(String data) {
@@ -473,12 +469,12 @@ public class MegaHandler {
 
 
 
-	public void download(String url, String path) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException, IllegalBlockSizeException, BadPaddingException{
+	public void download(String url, String path) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException, IllegalBlockSizeException, BadPaddingException, JSONException {
 		//TODO DOWNLOAD mismatch?
 		print("Download started");
 		String[] s = url.split("!");
 		String file_id = s[1];
-		byte[] file_key = MegaCrypt.base64_url_decode_byte(s[2]); 
+		byte[] file_key = MegaCrypt.base64_url_decode_byte(s[2]);
 
 		int[] intKey = MegaCrypt.aByte_to_aInt(file_key);
 		JSONObject json = new JSONObject();
@@ -489,16 +485,16 @@ public class MegaHandler {
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
-		
+
 		JSONObject file_data = new JSONObject(api_request(json.toString()));
 		int[] keyNOnce = new int[] { intKey[0] ^ intKey[4], intKey[1] ^ intKey[5], intKey[2] ^ intKey[6], intKey[3] ^ intKey[7], intKey[4], intKey[5] };
 		byte[] key = MegaCrypt.aInt_to_aByte(keyNOnce[0], keyNOnce[1], keyNOnce[2], keyNOnce[3]);
 
 		int[] iiv = new int[] { keyNOnce[4], keyNOnce[5], 0, 0 };
 		byte[] iv = MegaCrypt.aInt_to_aByte(iiv);
-
-		@SuppressWarnings("unused")
+		
 		int file_size = file_data.getInt("s");
+		final int file_size_mega = (file_size / 1024) / 1024;
 		String attribs = (file_data.getString("at"));
 		attribs = new String(MegaCrypt.aes_cbc_decrypt(MegaCrypt.base64_url_decode_byte(attribs), key));
 		String file_name = new JSONObject(attribs.substring(4, attribs.length())).getString("n");
@@ -513,9 +509,20 @@ public class MegaHandler {
 		FileOutputStream fos = new FileOutputStream(path+File.separator+file_name);
 		final OutputStream cos = new CipherOutputStream(fos, cipher);
 		final Cipher decipher = Cipher.getInstance("AES/CTR/NoPadding");
-	    	decipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
+		decipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
 		int read = 0;
 		final byte[] buffer = new byte[32767];
+		if (file_size_mega > 5) {
+			final File f = new File(path+File.separator+file_name);
+			timer = new Timer();
+			timer.scheduleAtFixedRate(new TimerTask() {
+				@Override
+				public void run() {
+					long fileSizeInMB = (f.length() / 1024) / 1024;
+					print("Downloaded: " + fileSizeInMB + "mb / " + file_size_mega + "mb");
+				}
+			}, 2000, 2000);
+		}
 		try {
 
 			URLConnection urlConn = new URL(file_url).openConnection();
@@ -537,6 +544,8 @@ public class MegaHandler {
 				}
 			}
 		}
+		timer.cancel();
+		timer.purge();
 		print("Download finished");
 	}
 
