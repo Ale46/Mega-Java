@@ -8,6 +8,7 @@
  * Contributors:
  *     @NT2005 - initial API and implementation
  ******************************************************************************/
+package com.company;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -20,15 +21,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 
 
 import java.math.BigInteger;
@@ -182,7 +175,7 @@ public class MegaHandler {
 		return api_request(json.toString());
 	}
 	
-	public long get_quota() {
+	public long get_quota() throws JSONException {
 		JSONObject json = new JSONObject();
 		try {
 			json.put("a", "uq");
@@ -191,7 +184,7 @@ public class MegaHandler {
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
-		
+
 		return new JSONObject(api_request(json.toString())).getLong("mstrg");
 	}
 
@@ -471,9 +464,24 @@ public class MegaHandler {
 
 
 
+	public void download(String url) throws IOException, NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, JSONException, BadPaddingException, InvalidKeyException {
+		download(url, new File(".").getCanonicalPath(), false);
+	}
+
+	public void download(String url, String path) throws NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IOException, JSONException, BadPaddingException, IllegalBlockSizeException, InvalidKeyException {
+		download(url, path, false);
+	}
+
+	public void download_verbose(String url, String path) throws NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IOException, JSONException, BadPaddingException, IllegalBlockSizeException, InvalidKeyException {
+		download(url, path, true);
+	}
+
+	public void download_verbose(String url) throws NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IOException, JSONException, BadPaddingException, IllegalBlockSizeException, InvalidKeyException {
+		download(url, new File(".").getCanonicalPath(), true);
+	}
 
 
-	public void download(String url, String path) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException, IllegalBlockSizeException, BadPaddingException{
+	private void download(String url, String path, boolean verbose) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException, IllegalBlockSizeException, BadPaddingException, JSONException {
 		//TODO DOWNLOAD mismatch?
 		print("Download started");
 		String[] s = url.split("!");
@@ -491,6 +499,7 @@ public class MegaHandler {
 		}
 		
 		JSONObject file_data = new JSONObject(api_request(json.toString()));
+		//print(file_data);
 		int[] keyNOnce = new int[] { intKey[0] ^ intKey[4], intKey[1] ^ intKey[5], intKey[2] ^ intKey[6], intKey[3] ^ intKey[7], intKey[4], intKey[5] };
 		byte[] key = MegaCrypt.aInt_to_aByte(keyNOnce[0], keyNOnce[1], keyNOnce[2], keyNOnce[3]);
 
@@ -500,30 +509,53 @@ public class MegaHandler {
 		@SuppressWarnings("unused")
 		int file_size = file_data.getInt("s");
 		String attribs = (file_data.getString("at"));
+
 		attribs = new String(MegaCrypt.aes_cbc_decrypt(MegaCrypt.base64_url_decode_byte(attribs), key));
+		//print(attribs.substring(4, attribs.length()));
+
 		String file_name = new JSONObject(attribs.substring(4, attribs.length())).getString("n");
-		print(file_name);
+		//print("Filename->>" +file_name);
 		final IvParameterSpec ivSpec = new IvParameterSpec(iv);
 		final SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
 		Cipher cipher = Cipher.getInstance("AES/CTR/nopadding");
 		cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
 		InputStream is = null;
-		String file_url = file_data.getString("g");
+		String file_url = null;
+		try {
+			file_url = file_data.getString("g");
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
 
-		FileOutputStream fos = new FileOutputStream(path+File.separator+file_name);
+		FileOutputStream fos = new FileOutputStream(path + File.separator + file_name);
 		final OutputStream cos = new CipherOutputStream(fos, cipher);
 		final Cipher decipher = Cipher.getInstance("AES/CTR/NoPadding");
-	    	decipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
+	    decipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
 		int read = 0;
 		final byte[] buffer = new byte[32767];
 		try {
 
 			URLConnection urlConn = new URL(file_url).openConnection();
 
-			print(file_url);
+            ProgressBar bar = new ProgressBar();
+			//print(file_url);
+            if(verbose) bar.update(0, file_size, "");
+			//print("FILESIZE:" +file_size);
 			is = urlConn.getInputStream();
-			while ((read = is.read(buffer)) > 0) {
+			long mDownloaded = 0;
+			double current_speed;
+			long startTime = System.nanoTime();
+			final double NANOS_PER_SECOND = 1000000000.0;
+			final double BYTES_PER_MIB = 1024 * 1024;
+			while ((read = is.read(buffer,0, 1024)) > 0) {
 				cos.write(buffer, 0, read);
+				mDownloaded += read;
+				//print(mDownloaded);
+				long timeInSecs = (System.nanoTime() - startTime + 1);
+				//print("Debug:" + mDownloaded + "/" + timeInSecs);
+				current_speed = NANOS_PER_SECOND / BYTES_PER_MIB * mDownloaded / (timeInSecs);
+				//print("Speed: "+ (current_speed) + " Mbps");
+				if(verbose) bar.update(mDownloaded, file_size, String.format("%.2f", current_speed) + " Mbps");
 			}
 		} finally {
 			try {
@@ -544,5 +576,46 @@ public class MegaHandler {
 
 	public static void print(Object o) {
 		System.out.println(o);
+	}
+	class ProgressBar {
+		private StringBuilder progress;
+
+		/**
+		 * initialize progress bar properties.
+		 */
+		public ProgressBar() {
+			init();
+		}
+
+		/**
+		 * called whenever the progress bar needs to be updated.
+		 * that is whenever progress was made.
+		 *
+		 * @param done an int representing the work done so far
+		 * @param total an int representing the total work
+		 */
+		public void update(double done, double total, String append) {
+			char[] workchars = {'|', '/', '-', '\\'};
+			String format = "\r%3d%% %s %c %s";
+
+			int percent = (int)((++done * 100) / total);
+			int extrachars = (percent / 2) - this.progress.length();
+
+			while (extrachars-- > 0) {
+				progress.append("#");
+			}
+
+			System.out.printf(format, percent, progress, workchars[(int)done % workchars.length], append);
+
+			if (done >= total) {
+				System.out.flush();
+				System.out.println();
+				init();
+			}
+		}
+
+		private void init() {
+			this.progress = new StringBuilder(60);
+		}
 	}
 }
