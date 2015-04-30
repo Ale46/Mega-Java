@@ -8,7 +8,6 @@
  * Contributors:
  *     @NT2005 - initial API and implementation
  ******************************************************************************/
-package com.company;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
