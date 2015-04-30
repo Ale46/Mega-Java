@@ -36,6 +36,11 @@ ArrayList<MegaFile> mf = mh.get_files();
 ```java
 try {
   mh.download("https://mega.co.nz/#!xVUkCKbY!Aq_5U3HiWTJMEAK7N_5ENGugZVp0bMj9C8JSjgF8zBM", "C:\\Users\\admin\\Desktop");
+  //download displaying progress bar and speed information
+  mh.download_verbose("https://mega.co.nz/#!xVUkCKbY!Aq_5U3HiWTJMEAK7N_5ENGugZVp0bMj9C8JSjgF8zBM", "C:\\Users\\admin\\Desktop");
+  //download in the active directory
+  mh.download("https://mega.co.nz/#!xVUkCKbY!Aq_5U3HiWTJMEAK7N_5ENGugZVp0bMj9C8JSjgF8zBM");
+  
 } catch (InvalidAlgorithmParameterException e) {
   e.printStackTrace();
 }
